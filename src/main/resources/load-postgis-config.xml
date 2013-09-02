@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+
+        <property name="location">
+            <value>${project.base.dir}/bin/database.properties</value>
+        </property>
+    </bean>
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"  destroy-method="close"
+          p:driverClassName="${postgres.classname}"
+          p:url="${postgres.url}"
+          p:username="${postgres.username}"
+          p:password="${postgres.password}"
+    />
+
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+          p:dataSource-ref="dataSource"
+    />
+
+
+    <bean id="jobLauncher"
+          class="org.springframework.batch.core.launch.support.SimpleJobLauncher"
+          p:jobRepository-ref="jobRepository" />
+
+    <bean id="jobRepository"
+          class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean"
+          p:transactionManager-ref="resourcelessTransactionManager" />
+
+    <bean id="resourcelessTransactionManager"
+          class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+
+
+    <bean id="cvsPointsReader" class="org.springframework.batch.item.file.FlatFileItemReader">
+        <!-- Read a csv file -->
+        <property name="resource" value="classpath:csv/points-intensity.csv" />
+
+        <property name="lineMapper">
+            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+                <!-- split it -->
+                <property name="lineTokenizer">
+                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                        <property name="delimiter">
+                            <util:constant
+                                    static-field="org.springframework.batch.item.file.transform.DelimitedLineTokenizer.DELIMITER_COMMA" />
+                        </property>
+                        <property name="names" value="latitude, longitude, intensity" />
+                    </bean>
+                </property>
+                <property name="fieldSetMapper">
+                    <!-- return back to reader, rather than a mapped object. -->
+                    <!--
+                <bean class="org.springframework.batch.item.file.mapping.PassThroughFieldSetMapper" />
+                     -->
+                    <!-- map to an object -->
+                    <bean class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper">
+                        <property name="prototypeBeanName" value="gpsLocation" />
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <bean id="gpsLocation" class="com.spatialloader.model.GpsLocation" scope="prototype" />
+
+    <bean id="jdbcTemplate" class ="org.springframework.jdbc.core.JdbcTemplate" >
+        <constructor-arg index="0" type="javax.sql.DataSource">
+            <ref local = "dataSource" />
+        </constructor-arg>
+    </bean>
+
+    <bean id="postgresPointsItemWriter"
+          class="com.spatialloader.writer.PostgisGpsLocationWriter" p:jdbcTemplate-ref="jdbcTemplate">
+    </bean>
+
+    <batch:job id="loadGpsPointsJob">
+        <batch:step id="step1">
+            <batch:tasklet>
+                <batch:chunk reader="cvsPointsReader" writer="postgresPointsItemWriter" commit-interval="10">
+                </batch:chunk>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+</beans>
