@@ -38,12 +38,10 @@
 
 
     <bean id="cvsPointsReader" class="org.springframework.batch.item.file.FlatFileItemReader">
-        <!-- Read a csv file -->
         <property name="resource" value="classpath:csv/points-intensity.csv"/>
 
         <property name="lineMapper">
             <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
-                <!-- split it -->
                 <property name="lineTokenizer">
                     <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
                         <property name="delimiter">
@@ -54,11 +52,6 @@
                     </bean>
                 </property>
                 <property name="fieldSetMapper">
-                    <!-- return back to reader, rather than a mapped object. -->
-                    <!--
-                <bean class="org.springframework.batch.item.file.mapping.PassThroughFieldSetMapper" />
-                     -->
-                    <!-- map to an object -->
                     <bean class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper">
                         <property name="prototypeBeanName" value="gpsLocation"/>
                     </bean>

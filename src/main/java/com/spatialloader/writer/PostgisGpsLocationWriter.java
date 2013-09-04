@@ -14,7 +14,7 @@ import java.util.List;
  *
  */
 public class PostgisGpsLocationWriter implements ItemWriter<GpsLocation> {
-    public final String insertSql = "insert into GPS_POINTS(LOCATION, INTENSITY) values ( ST_GeomFromText(?, 4326),?)";
+    public final String insertSql = "INSERT INTO GPS_POINTS(LOCATION, INTENSITY) VALUES ( ST_GeomFromText(?, 4326),?)";
     private JdbcTemplate jdbcTemplate;
 
     public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
